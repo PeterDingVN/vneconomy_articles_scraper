@@ -1,9 +1,6 @@
 import subprocess
 from pathlib import Path
 import pandas as pd
-import os
-import signal
-import logging
 
 def scrapy_crawl_vnecon():
     # Type
@@ -18,24 +15,20 @@ def scrapy_crawl_vnecon():
 
     # Target folder
     target_folder_name = "vnecon"
-    output_file = Path.cwd()/'vnecon_articles.jsonl' # check name of output file
+    output_file = Path.cwd()/'vnecon_articles.jsonl'
 
-    # Search for folder
     found_path = None
     for path in Path.cwd().rglob(target_folder_name):
         if path.is_dir():
             found_path = path
             break
-    if not found_path:
-        print(f"No folder: '{target_folder_name}'")
-        return
 
     # Run scrapy
     try:
         subprocess.run(
             ["scrapy", "crawl", "vnecon", f"{dict_[type_]}", str(output_file)],
             cwd=found_path,
-            check=True  # Raise error if spider fails
+            check=True
         )
     except subprocess.CalledProcessError as e:
         print(f"SCRAPY ERROR: {e.returncode}")
@@ -61,7 +54,6 @@ def excel_cleaner():
 def main():
     try:
         scrapy_crawl_vnecon()
-        excel_cleaner()
     except KeyboardInterrupt:
         print('Process interrupted by USER')
     except Exception as e:

@@ -1,6 +1,5 @@
 import scrapy
 import re
-import numpy as np
 
 class VNEconSpider(scrapy.Spider):
     name = 'vnecon'
@@ -13,6 +12,7 @@ class VNEconSpider(scrapy.Spider):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.inp = input('Enter your target category: ').lower().strip()
+        self.max_page = int(input('Enter max page: '))
 
     def category(self, input):
         dict = {
@@ -41,17 +41,16 @@ class VNEconSpider(scrapy.Spider):
         yield scrapy.Request(url=start_url, callback=self.parse_category)
 
     def parse_category(self, response):
-        global articles_endpoints
+
         base_url = 'https://vneconomy.vn/'
         start_url = 'https://vneconomy.vn/' + self.category(self.inp)
 
         # Scrape page 2 onward
         cur_url = re.search(r'(\d+)$', str(response.url))
-        if cur_url:
-            if cur_url.group(1) != 1:
-                articles_endpoints = response.css(
-                    'div.grid-new-column_item.mt-48 > div.featured-row_item.featured-column_item > a.link-layer-imt::attr(href)'
-                ).getall()
+        if cur_url and cur_url.group(1) != 1:
+            articles_endpoints = response.css(
+                'div.grid-new-column_item.mt-48 > div.featured-row_item.featured-column_item > a.link-layer-imt::attr(href)'
+            ).getall()
 
         # Base case for Page 1
         else:
@@ -69,8 +68,10 @@ class VNEconSpider(scrapy.Spider):
         # cant_prev_page = response.css('li.page-item.disabled a.page-link.prev::attr(href)').get()
 
         if next_page is not None:
-            next_page_url = start_url + next_page
-            yield response.follow(url=next_page_url, callback=self.parse_category)
+            nxt_page_num = re.search(r'(?<==)\d+', next_page)
+            if nxt_page_num and int(nxt_page_num.group())<=self.max_page:
+                next_page_url = start_url + next_page
+                yield response.follow(url=next_page_url, callback=self.parse_category)
 
 
     def parse_article(self, response):
