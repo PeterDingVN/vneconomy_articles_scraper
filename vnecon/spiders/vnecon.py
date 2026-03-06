@@ -11,8 +11,8 @@ class VNEconSpider(scrapy.Spider):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.inp = input('Enter your target category: ').lower().strip()
-        self.max_page = int(input('Enter max page: '))
+        # self.inp = input('Enter your target category: ').lower().strip()
+        self.max_page = 1
 
     def category(self, input):
         dict = {
@@ -36,14 +36,20 @@ class VNEconSpider(scrapy.Spider):
 
     def start_requests(self):
         base = 'https://vneconomy.vn/'
-        spec = self.category(self.inp)
-        start_url = base + spec
-        yield scrapy.Request(url=start_url, callback=self.parse_category)
+        for url in ['td', 'dt', 'tc', 'kts', 'ktx', 'tt', 'dn', 'bds', 'tg', 'ds']:
+            start_url = base + self.category(url)
+            yield scrapy.Request(url=start_url, callback=self.parse_category)
+
 
     def parse_category(self, response):
 
         base_url = 'https://vneconomy.vn/'
-        start_url = 'https://vneconomy.vn/' + self.category(self.inp)
+        start_url = str(response.url)
+        category = re.search(r'/([^/]+)\.htm', start_url)
+        if category:
+            category = category.group(1).replace('-', ' ')
+        else:
+            category = "undefined"
 
         # Scrape page 2 onward
         cur_url = re.search(r'(\d+)$', str(response.url))
@@ -61,7 +67,7 @@ class VNEconSpider(scrapy.Spider):
 
         for article_end in articles_endpoints:
             article = base_url + article_end
-            yield scrapy.Request(url=article, callback=self.parse_article)
+            yield scrapy.Request(url=article, callback=self.parse_article, cb_kwargs={'category': category})
 
         # Move to next page
         next_page = response.css('li.page-item a[class=page-link]::attr(href)').get()
@@ -74,7 +80,7 @@ class VNEconSpider(scrapy.Spider):
                 yield response.follow(url=next_page_url, callback=self.parse_category)
 
 
-    def parse_article(self, response):
+    def parse_article(self, response, category):
         # title
         title = response.css('h1.name-detail::text').get()
         if title:
@@ -100,6 +106,7 @@ class VNEconSpider(scrapy.Spider):
 
         yield {
             'Title': title,
+            'Category': category,
             'Date': date,
             'Content': content
         }
